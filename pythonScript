@@ -1,0 +1,79 @@
+import pandas as pd
+import numpy as np
+
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
+import statsmodels.graphics.api as smg
+
+import matplotlib.pyplot as plt
+
+#create data frames
+yt_df = pd.read_csv('youtube-top-100-songs-global-weekly')
+sp_df = pd.read_csv('spotify-top-50-songs-global-weekly')
+
+#rename the columns that need to be fixed
+yt_df = yt_df.rename(columns={'Previous Rank': 'Previous_Rank', 'Track Name': 'Track_Name',
+                              'Periods_on_chart': 'Periods', 'Artist Names': 'Artist',
+                              'Views': 'Streams', 'Youtube URL': 'URL'})
+sp_df = sp_df.rename(columns={'Track Name': 'Track_Name', 'Artist Names': 'Artist', 'Plays':'Streams'})
+
+#turn rank into the index for both
+yt_df = yt_df.set_index("Rank")
+sp_df = sp_df.set_index("Rank")
+
+#remove the commas from the spotify streams data frame
+sp_df['Streams'] = sp_df['Streams'].str.replace(',', '').astype(int)
+
+
+#plot the streaming numbers for each against each other on a plot
+plt.figure(figsize=(12, 6))
+plt.plot(yt_df.index, yt_df['Streams'], label='YouTube Streams', marker='o')
+plt.plot(sp_df.index, sp_df['Streams'], label='Spotify Streams', marker='x')
+plt.title('Streaming Numbers by Rank on YouTube vs Spotify')
+plt.xlabel('Rank')
+plt.ylabel('Streams')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+#count the how many times each genre appears for both datasets
+yt_genre_counts = yt_df['Genre'].value_counts()
+sp_genre_counts = sp_df['Genre'].value_counts()
+genre_df = pd.DataFrame({'YouTube': yt_genre_counts,'Spotify': sp_genre_counts}).fillna(0)
+
+#plot the yt vs spotify genre counts
+genre_df.plot(kind='bar', figsize=(12, 6), title='Genre Popularity on YouTube vs Spotify')
+plt.xlabel('Genre')
+plt.ylabel('Count')
+plt.xticks(rotation=90)
+plt.show()
+
+#count the frequency of artists in both datasets
+yt_artist_counts = yt_df['Artist'].value_counts()
+sp_artist_counts = sp_df['Artist'].value_counts()
+artists_df = pd.DataFrame({'YouTube': yt_artist_counts,'Spotify': sp_artist_counts}).fillna(0)
+artists_df['YouTube'] = artists_df['YouTube'].astype(float)
+artists_df['Spotify'] = artists_df['Spotify'].astype(float)
+freqartists_df = artists_df[(artists_df['YouTube'] > 1) | (artists_df['Spotify'] > 1)]
+
+#plot frequent artists and their data
+freqartists_df.plot(kind='bar', figsize=(14, 7), title='Artists Appearing 2+ Times on YouTube vs Spotify')
+plt.xlabel('Artist')
+plt.ylabel('Frequency')
+plt.xticks(rotation=90)
+plt.show()
+
+#create a combined data frame
+combined_df = pd.merge(yt_df.reset_index()[['Track_Name', 'Streams']], sp_df.reset_index()[['Track_Name', 'Streams']],
+                       on='Track_Name', suffixes=('_YouTube', '_Spotify'))
+combined_df = combined_df.dropna()
+
+#graph the correlation between streaming numbers
+plt.figure(figsize=(10, 6))
+plt.scatter(combined_df['Streams_YouTube'], combined_df['Streams_Spotify'], alpha=0.6)
+plt.title('Correlation Between Streams on YouTube and Spotify')
+plt.xlabel('YouTube Streams')
+plt.ylabel('Spotify Streams')
+plt.grid(True)
+plt.show()
+
